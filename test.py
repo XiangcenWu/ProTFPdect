@@ -68,6 +68,7 @@ transform = Compose([
     ScaleIntensityRangePercentilesd(['image'], 0, 100, 0, 1),
 ])
 
+
 train, test = spilt_train_test()
 loader = get_loader(test, transform=transform, batch_size=1, shuffle=True, drop_last=True)
 
@@ -85,6 +86,9 @@ plt.show()
 
 
 print(torch.unique(data['radio_positive']))
+
+
+
 # image = torch.Tensor(
 #     [[[1, 2, 3, 4, 5],
 #       [1, 2, 3, 4, 5],
