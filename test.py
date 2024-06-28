@@ -70,7 +70,7 @@ transform = Compose([
 
 
 train, test = spilt_train_test()
-loader = get_loader(test, transform=transform, batch_size=1, shuffle=True, drop_last=True)
+loader = get_loader(test, transform=transform, batch_size=2, shuffle=True, drop_last=True)
 
 
 data = next(iter(loader))
@@ -79,13 +79,15 @@ data = next(iter(loader))
 print(data['image'].shape, data['radio_positive'].shape, data['prostate'].shape, data['TP'].shape, data['FP'].shape)
 print(data['image'].max(), data['image'].min())
 
-
+print(data['image'].shape)
 
 plt.imshow(data['image'][0, 0, :, :, 30])
 plt.show()
 
 
-print(torch.unique(data['radio_positive']))
+print(torch.unique(data['radio_positive'][0, 0, :, :, :]))
+print(torch.unique(data['TP'][0, 0, :, :, :]))
+print(torch.unique(data['FP'][0, 0, :, :, :]))
 
 
 
