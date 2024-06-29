@@ -20,17 +20,16 @@ def train_net(
     for batch in train_loader:
 
         img, radio_positive = batch["image"].to(device), batch["radio_positive"].to(device)
-        TP, FP = batch["TP"].to(device), batch["FP"].to(device)
+        TP_FP = batch["TP_FP"].to(device)
         
         train_img = concate_mri_radio_positive(img, radio_positive)
-        gt = concate_TP_FP(TP, FP)
         # forward pass and calculate the selection
 
 
         # forward pass of selected data
         output = model(train_img)
         
-        loss = train_loss(output, gt)
+        loss = train_loss(output, TP_FP)
 
         
 
@@ -50,5 +49,5 @@ def concate_mri_radio_positive(mri, radio_positive):
     return torch.cat([mri, radio_positive], dim=1)
 
 
-def concate_TP_FP(TP, FP):
-    return torch.cat([TP, FP], dim=1)
+# def concate_TP_FP(TP, FP):
+#     return torch.cat([TP, FP], dim=1)

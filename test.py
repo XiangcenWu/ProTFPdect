@@ -38,7 +38,7 @@ import random
 
 # convert_trainable(r'D:\ProTFPdect\data\Prostate-MRI-US-Biopsy-0005\1.3.6.1.4.1.14519.5.2.1.196285102861067055900322921931257124293')
 
-# convert_h5('data', 'data_converted')
+convert_h5('data', 'data_converted')
 
 
 # x = h5_pkl_to_dict(530)
@@ -57,37 +57,37 @@ import random
 # x = np.linspace(0, 897, 898, dtype=int).tolist()
 # print(x)
 
-from monai.transforms import Compose, EnsureChannelFirstd, AdjustContrast, RandCropByPosNegLabeld, ScaleIntensityRangePercentilesd, SpatialPadd
+# from monai.transforms import Compose, EnsureChannelFirstd, AdjustContrast, RandCropByPosNegLabeld, ScaleIntensityRangePercentilesd, SpatialPadd
 
 
 
-transform = Compose([
-    ReadH5Pkld(base_dir='data_converted'),
-    SpatialPadd(keys=['image', 'radio_positive', 'prostate', 'TP', 'FP'], spatial_size=(128, 128, 64)),
-    RandCropByPosNegLabeld(keys=['image', 'radio_positive', 'prostate', 'TP', 'FP'], label_key="prostate", spatial_size=(128, 128, 64)),
-    ScaleIntensityRangePercentilesd(['image'], 0, 100, 0, 1),
-])
+# transform = Compose([
+#     ReadH5Pkld(base_dir='data_converted'),
+#     SpatialPadd(keys=['image', 'radio_positive', 'prostate', 'TP', 'FP'], spatial_size=(128, 128, 64)),
+#     RandCropByPosNegLabeld(keys=['image', 'radio_positive', 'prostate', 'TP', 'FP'], label_key="prostate", spatial_size=(128, 128, 64)),
+#     ScaleIntensityRangePercentilesd(['image'], 0, 100, 0, 1),
+# ])
 
 
-train, test = spilt_train_test()
-loader = get_loader(test, transform=transform, batch_size=2, shuffle=True, drop_last=True)
+# train, test = spilt_train_test()
+# loader = get_loader(test, transform=transform, batch_size=2, shuffle=True, drop_last=True)
 
 
-data = next(iter(loader))
+# data = next(iter(loader))
 
 
-print(data['image'].shape, data['radio_positive'].shape, data['prostate'].shape, data['TP'].shape, data['FP'].shape)
-print(data['image'].max(), data['image'].min())
+# print(data['image'].shape, data['radio_positive'].shape, data['prostate'].shape, data['TP'].shape, data['FP'].shape)
+# print(data['image'].max(), data['image'].min())
 
-print(data['image'].shape)
+# print(data['image'].shape)
 
-plt.imshow(data['image'][0, 0, :, :, 30])
-plt.show()
+# plt.imshow(data['image'][0, 0, :, :, 30])
+# plt.show()
 
 
-print(torch.unique(data['radio_positive'][0, 0, :, :, :]))
-print(torch.unique(data['TP'][0, 0, :, :, :]))
-print(torch.unique(data['FP'][0, 0, :, :, :]))
+# print(torch.unique(data['radio_positive'][0, 0, :, :, :]))
+# print(torch.unique(data['TP'][0, 0, :, :, :]))
+# print(torch.unique(data['FP'][0, 0, :, :, :]))
 
 
 
