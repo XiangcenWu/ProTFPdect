@@ -54,17 +54,17 @@ def main():
     ])
 
 
-    train, test = spilt_train_test(seed=2)
-    loader = get_loader(test[:1], transform=transform, batch_size=1, shuffle=True, drop_last=True)
-    inference_loader = get_loader(test[:1], transform=inference_transform, batch_size=1, shuffle=True, drop_last=True)
+    train, test = spilt_train_test(seed=123)
+    loader = get_loader(train[:1], transform=transform, batch_size=1, shuffle=True, drop_last=True)
+    inference_loader = get_loader(train[:1], transform=inference_transform, batch_size=1, shuffle=True, drop_last=True)
 
     
     
     
     model = SwinUNETR(in_channels=2, out_channels=3, img_size=(128, 128, 64))
     loss_function = DiceLoss(to_onehot_y=True, softmax=True)
-    optimizer = AdamW(model.parameters(), lr=1e-3)
-    for i in range(40):
+    optimizer = AdamW(model.parameters(), lr=1e-2)
+    for i in range(10):
         loss = train_net(
             model=model,
             train_loader=loader,
@@ -74,20 +74,24 @@ def main():
         )
         print(loss)
 
-        # print(inference_net(model, inference_loader, 'cuda:0'))
+        print(inference_net(model, inference_loader, 'cuda:0'))
         
         
         ################
 
     import matplotlib.pyplot as plt
-    
+    data = next(iter(loader))
     for i in range(5):
-        data = next(iter(inference_loader))
+        
         train_img = torch.cat([data['image'], data['radio_positive']], dim=1).to('cuda:0')
         with torch.no_grad():
             inference_outputs = sliding_window_inference(train_img, (128, 128, 32), 1, model)
         inference_outputs = post_process(inference_outputs)
         plt.imshow(inference_outputs[0, :, :, 25+2*i].cpu().detach())
+        plt.show()
+        TPFP = data['TPFP']
+        # print(TPFP.shape)
+        plt.imshow(TPFP[0, 0, :, :, 25+2*i].cpu().detach())
         plt.show()
 
 

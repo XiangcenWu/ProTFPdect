@@ -52,7 +52,7 @@ def get_data_dict_from_uid_dir(uid_dir):
     mri_gt['image'], mri_gt['label'] = \
         change_volumn_orientation(mri_gt['image']), change_volumn_orientation(mri_gt['label'])
     
-    # mri_gt['positions'] = position_list
+    mri_gt['positions'] = position_list
     
     return mri_gt
     
@@ -97,93 +97,73 @@ def check_position_list(uid_dir):
 
         
 
-resizer = Resize((128, 128, 64), mode='nearest-exact')
-def convert_h5(uid_dir, des_dir):
+
+def convert_h5(uid_dir, des_dir, size=(128, 128, 64)):
+    resizer = Resize(size, mode='nearest-exact')
     uid_dirs = find_leaf_directories('data')
     
     for i, uid_dir in enumerate(uid_dirs):
         print(uid_dir)
         data = get_data_dict_from_uid_dir(uid_dir)
-        # indexs = data['positions']
+        indexs = data['positions']
         mri = data['image']
         gt = data['label']
         
+        
+        position = {'TP': [], 'FP': []}
+        for index in indexs:
+            
+            value = gt[index[:, 0], index[:, 1], index[:, 2]]
+            if torch.unique(value) == 2: # TP
+                _tensor = torch.zeros_like(gt, dtype=torch.int)
+                # print('b', _tensor.shape)
+                _tensor[index[:, 0], index[:, 1], index[:, 2]] = 2
+                _tensor = resizer(_tensor.unsqueeze(0)).squeeze(0)
+                # print(_tensor.shape)
+                
+                TP_index = torch.argwhere(_tensor == 2)
+                position['TP'].append(TP_index)
+                
+                
+            elif torch.unique(value) == 3: # FP
+                _tensor = torch.zeros_like(gt, dtype=torch.int)
+                _tensor[index[:, 0], index[:, 1], index[:, 2]] = 3
+                _tensor = resizer(_tensor.unsqueeze(0)).squeeze(0)
+                
+                TP_index = torch.argwhere(_tensor == 3)
+                position['FP'].append(TP_index)
+            
+
+        
+        
+        
+        
         mri = resizer(mri.unsqueeze(0)).squeeze(0)
-        gt = resizer(gt.unsqueeze(0)).squeeze(0)
+        # gt = resizer(gt.unsqueeze(0)).squeeze(0)
+        
+        
         
         with h5py.File(os.path.join(des_dir, f'data_{i}.h5'), 'w') as hf:
             hf.create_dataset('image', data=mri)
-            hf.create_dataset('gt', data=gt)
 
-        # save_pkl(data=indexs, file_name=os.path.join(des_dir, f'indexs_{i}.pkl'))
+        save_pkl(data=position, file_name=os.path.join(des_dir, f'positions_{i}.pkl'))
     
 
 
-# if __name__ == "__main__":
+def convert_position_dict_gt(dict, size=(128, 128, 64), radio_positive=False):
+    TP_list = dict['TP']
+    FP_list = dict['FP']
     
-    # print(len(find_patient_dirs('data')))
-    # print(len(find_leaf_directories('data')))
-    
-    # uid_dir = find_leaf_directories('data')
-    
-    # data = get_array_from_uid_dir(uid_dir)
-    
-    
-    # print(data.keys())
-    
-    
-    # shape_tensor = get_image_size_info('data')
-    # print(shape_tensor.min(dim=0), shape_tensor.max(dim=0), shape_tensor.mean(dim=0))
-
+    _tensor = torch.zeros(size, dtype=torch.int)
 
     
-    
-    
-
-# def get_data_loader(cfg):
-#     data_reader = Compose(
-#         [
-#             LoadImaged(keys=["image", "label"]),
-#             EnsureChannelFirstd(keys=["image", "label"]),
-#             ConvertLabeld(keys=['label'], labels_list=cfg.data_convert.labels),
-#             Spacingd(
-#                 keys=["image", "label"],
-#                 pixdim=cfg.data_convert.pix_dim,
-#                 mode=("bilinear", "nearest"),
-#             ),
-#             NormalizeIntensityd(keys=["image"]),
-#             CenterSpatialCropd(keys=['image', 'label'], roi_size=cfg.data_convert.crop),
-#             SpatialPadd(keys=['image', 'label'], spatial_size=cfg.data_convert.crop),
-#             Rot90d(keys=['image','label'], k=3)
-#         ],
-#     )
-#     return data_reader
-
-
-# def convert_mp_h5(cfg):
-#     institution_list = get_institution_list(cfg)
-#     data_reader = get_data_loader(cfg)
-#     # iterate over all data
-#     for img_name in os.listdir(cfg.data_convert.raw_data_dir):
-#         # make sure all data are CT data
-#         # also only read img not label to get the index only
-#         if img_name.endswith('img.nii'):
-#             image_index = img_name[:6]
-#             if image_index in institution_list:
-#                 img_dir = os.path.join(cfg.data_convert.raw_data_dir, str(image_index) + '_img.nii')
-#                 label_dir = os.path.join(cfg.data_convert.raw_data_dir, str(image_index) + '_mask.nii')
-#                 # put file names to a dict
-#                 dir_dict = {
-#                     'image' : img_dir,
-#                     'label' : label_dir
-#                 }
-                
-                
-#                 loaded_dict = data_reader(dir_dict)
-#                 with h5py.File(os.path.join(cfg.data_convert.des_dir, image_index + '.h5'), 'w') as hf:
-
-#                     hf.create_dataset('image', data=loaded_dict['image'])
-
-
-#                     hf.create_dataset('label', data=(loaded_dict['label']))
-
+    for index in TP_list:
+        _tensor[index[:, 0], index[:, 1], index[:, 2]] = 1
+    for index in FP_list:
+        if radio_positive:
+            _tensor[index[:, 0], index[:, 1], index[:, 2]] = 1
+        else:
+            _tensor[index[:, 0], index[:, 1], index[:, 2]] = 2
+            
+        
+    return _tensor

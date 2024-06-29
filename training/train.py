@@ -20,7 +20,7 @@ def train_net(
     for batch in train_loader:
 
         img, radio_positive = batch["image"].to(device), batch["radio_positive"].to(device)
-        TP_FP = batch["TP_FP"].to(device)
+        TP_FP = batch["TPFP"].to(device)
         
         train_img = concate_mri_radio_positive(img, radio_positive)
         # forward pass and calculate the selection

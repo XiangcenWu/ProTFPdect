@@ -14,32 +14,50 @@ from monai.inferers import sliding_window_inference
 
 def index_to_file_dir(base_dir, index):
     h5_dir = os.path.join(base_dir, f'data_{index}.h5')
-    pkl_dir = os.path.join(base_dir, f'indexs_{index}.pkl')
+    pkl_dir = os.path.join(base_dir, f'positions_{index}.pkl')
     
     return h5_dir, pkl_dir
 
+def convert_position_dict_gt(dict, size=(128, 128, 64), radio_positive=False):
+    TP_list = dict['TP']
+    FP_list = dict['FP']
+    
+    _tensor = torch.zeros(size, dtype=torch.int)
 
-def convert_h5_pkl_trainable(index, base_dir):
+    
+    for index in TP_list:
+        _tensor[index[:, 0], index[:, 1], index[:, 2]] = 1
+    for index in FP_list:
+        
+        if radio_positive:
+            _tensor[index[:, 0], index[:, 1], index[:, 2]] = 1
+        else:
+            _tensor[index[:, 0], index[:, 1], index[:, 2]] = 2
+            
+        
+    return _tensor
+
+
+def convert_h5_pkl_trainable(index, base_dir, size=(128, 128, 64)):
     
     
     h5_dir, pkl_dir = index_to_file_dir(base_dir, index)
     h5f = h5py.File(h5_dir, 'r')
-    
+    indexs_dict = load_pkl(pkl_dir)
     # data = get_data_dict_from_uid_dir(uid_dir)
 
     mri = torch.from_numpy(h5f['image'][:])
-    gt = torch.from_numpy(h5f['gt'][:])
+    
     
     h5f.close()
     
-    radio_positive = ((gt == 2) + (gt == 3)).int()
-    prostate = (gt != 0 ).int()
+    radio_positive = convert_position_dict_gt(indexs_dict, size=size, radio_positive=True)
+
 
     
     # get TP and FP now
-    TP_FP = torch.zeros_like(gt, dtype=torch.int)
-    TP_FP[gt == 2] = 1
-    TP_FP[gt == 3] = 2
+    TPFP = convert_position_dict_gt(indexs_dict, size=size, radio_positive=False)
+    
     # for index in indexs:
     #     index = torch.from_numpy(index)
 
@@ -60,16 +78,15 @@ def convert_h5_pkl_trainable(index, base_dir):
 
     
     
-    return mri, radio_positive, prostate, TP_FP
+    return mri, radio_positive, TPFP, indexs_dict
 
 
 def h5_pkl_to_dict(index, base_dir='data_converted'):
-    mri, radio_positive, prostate, TP_FP = convert_h5_pkl_trainable(index, base_dir)
+    mri, radio_positive, TPFP, indexs_dict = convert_h5_pkl_trainable(index, base_dir)
     data_dict = {
         'image': mri.unsqueeze(0), 
         'radio_positive': radio_positive.unsqueeze(0),
-        'prostate': prostate.unsqueeze(0),
-        'TP_FP': TP_FP.unsqueeze(0),
+        'TPFP': TPFP.unsqueeze(0),
     }
     
     
@@ -78,11 +95,11 @@ def h5_pkl_to_dict(index, base_dir='data_converted'):
 
 
 def h5_pkl_to_dict_test(index, base_dir='data_converted'):
-    mri, radio_positive, prostate, TP_FP = convert_h5_pkl_trainable(index, base_dir)
+    mri, radio_positive, TPFP, indexs_dict = convert_h5_pkl_trainable(index, base_dir)
     data_dict = {
         'image': mri.unsqueeze(0), 
         'radio_positive': radio_positive.unsqueeze(0),
-        'TP_FP': TP_FP.unsqueeze(0),
+        'indexs_dict': indexs_dict
     }
     
     
@@ -137,4 +154,3 @@ def get_loader(
         drop_last=drop_last
     )
 
-    

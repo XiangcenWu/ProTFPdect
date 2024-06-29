@@ -22,8 +22,8 @@ def inference_net(
 
         img, radio_positive = batch["image"].to(device), batch["radio_positive"].to(device)
         # TP_gt, FP_gt = batch["TP"].to(device), batch["FP"].to(device)
-        TP_FP = batch['TP_FP']
-        TP_index, FP_index = get_TP_FP_index_gt(TP_FP)
+        # TP_FP = batch['TP_FP']
+        TP_index, FP_index = batch['indexs_dict']['TP'], batch['indexs_dict']['FP']
         
         
         inference_img = concate_mri_radio_positive(img, radio_positive)
@@ -37,36 +37,42 @@ def inference_net(
             inference_outputs = model(inference_img)
 
         inference_outputs = post_process(inference_outputs)
+        # print(inference_outputs.shape, torch.unique(inference_outputs))
         
-        
-        if TP_index.shape[0] != 0:
+        for index in TP_index:
+            # print(index.shape)
+            
+            
             num_TP += 1
             
-        
-            TP_prediction = inference_outputs[TP_index[:, 0], TP_index[:, 1], TP_index[:, 2]]
-            num_TP_pred = torch.sum(TP_prediction == 1).item()
-            num_TP_gt = torch.sum(TP_FP == 1).item()
             
-            if num_TP_pred / num_TP_gt > 0.5:
+            prediction = inference_outputs[0, index[0, :, 0], index[0, :, 1], index[0, :, 2]]
+            num_TP_pred = torch.sum(prediction == 1).item()
+            
+            print(num_TP_pred, index.shape[1])
+            
+            if num_TP_pred / index.shape[1] > 0.5:
                 dect_TP += 1
                 
-
-
-        if FP_index.shape[0] != 0:   
+                
+        for index in FP_index:
+            
+            
             num_FP += 1
             
-             
-            FP_prediction = inference_outputs[FP_index[:, 0], FP_index[:, 1], FP_index[:, 2]]
-    
-            num_FP_pred = torch.sum(FP_prediction == 2).item()
-            num_FP_gt = torch.sum(TP_FP == 2).item()
             
+            prediction = inference_outputs[0, index[0, :, 0], index[0, :, 1], index[0, :, 2]]
+            num_FP_pred = torch.sum(prediction == 2).item()
             
-            if num_FP_pred / num_FP_gt > 0.5:
+            if num_FP_pred / index.shape[1] > 0.5:
                 dect_FP += 1
                 
                 
-        return dect_TP/num_TP, dect_FP/num_FP
+
+        return num_TP, num_FP, dect_TP, dect_FP
+
+        
+
 
         
         
