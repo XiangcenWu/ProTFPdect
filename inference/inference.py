@@ -16,12 +16,14 @@ def inference_net(
     model.eval()
     
     num_TP, num_FP = 0, 0
-    num_detected_TP, num_detected_FP = 0, 0
+    dect_TP, dect_FP = 0, 0
+
     for batch in inference_loader:
 
         img, radio_positive = batch["image"].to(device), batch["radio_positive"].to(device)
         # TP_gt, FP_gt = batch["TP"].to(device), batch["FP"].to(device)
-        loaction = batch['position']
+        TP_FP = batch['TP_FP']
+        TP_index, FP_index = get_TP_FP_index_gt(TP_FP)
         
         
         inference_img = concate_mri_radio_positive(img, radio_positive)
@@ -32,35 +34,48 @@ def inference_net(
 
         # forward pass of selected data
         with torch.no_grad():
-            inference_outputs = sliding_window_inference(inference_img, (128, 128, 32), 1, model)
+            inference_outputs = model(inference_img)
 
         inference_outputs = post_process(inference_outputs)
-
         
         
-        
-        TP_location_list, FP_location_list = loaction['TP'], loaction['FP']
-        
-        
-        for list in TP_location_list:
+        if TP_index.shape[0] != 0:
             num_TP += 1
             
-            if check_detected(inference_outputs, list) == 1:
-                num_detected_TP += 1
+        
+            TP_prediction = inference_outputs[TP_index[:, 0], TP_index[:, 1], TP_index[:, 2]]
+            num_TP_pred = torch.sum(TP_prediction == 1).item()
+            num_TP_gt = torch.sum(TP_FP == 1).item()
+            
+            if num_TP_pred / num_TP_gt > 0.5:
+                dect_TP += 1
                 
-                
-        for list in FP_location_list:
+
+
+        if FP_index.shape[0] != 0:   
             num_FP += 1
-            if check_detected(inference_outputs, list) == 0:
-                num_detected_FP += 1
+            
+             
+            FP_prediction = inference_outputs[FP_index[:, 0], FP_index[:, 1], FP_index[:, 2]]
+    
+            num_FP_pred = torch.sum(FP_prediction == 2).item()
+            num_FP_gt = torch.sum(TP_FP == 2).item()
+            
+            
+            if num_FP_pred / num_FP_gt > 0.5:
+                dect_FP += 1
                 
+                
+        return dect_TP/num_TP, dect_FP/num_FP
+
         
         
-
-                
-                
-    return  num_TP, num_FP, num_detected_TP, num_detected_FP
-
+        
+def get_TP_FP_index_gt(gt):
+    TP_index = torch.argwhere(gt == 1)
+    FP_index = torch.argwhere(gt == 2)
+    
+    return TP_index, FP_index
 
 
 def check_detected(prediction, location) -> bool:
@@ -97,6 +112,4 @@ def concate_mri_radio_positive(mri, radio_positive):
 
 
 def post_process(output):
-    th = AsDiscrete(threshold=0.5)
-    output = torch.sigmoid(output)
-    return th(output)
+    return torch.argmax(output, dim=1)
